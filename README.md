@@ -1,4 +1,4 @@
-# STROYKLIMAT — Витрина HVAC для України 🏢
+# STROYKLIMAT — Витрина HVAC для України 
 
 ![Version](https://img.shields.io/badge/version-1.0-blue)
 ![Status](https://img.shields.io/badge/status-production--ready-green)
