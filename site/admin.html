@@ -71,7 +71,7 @@
         }
         .table-header {
             display: grid;
-            grid-template-columns: 50px 150px 100px 100px 80px 0.5fr 80px;
+            grid-template-columns: 34px 50px 150px 100px 100px 80px 0.5fr 80px;
             gap: 0;
             background: var(--bg0);
             border-bottom: 1px solid var(--stroke);
@@ -81,7 +81,7 @@
         }
         .table-row {
             display: grid;
-            grid-template-columns: 50px 150px 100px 100px 80px 0.5fr 80px;
+            grid-template-columns: 34px 50px 150px 100px 100px 80px 0.5fr 80px;
             gap: 0;
             border-bottom: 1px solid var(--stroke);
             align-items: center;
@@ -324,6 +324,39 @@
             justify-content: center;
             flex-wrap: wrap;
         }
+        .bulk-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 14px;
+            background: var(--card);
+            border: 1px solid var(--stroke);
+            border-radius: 8px;
+            margin-bottom: 14px;
+        }
+        .bulk-left,
+        .bulk-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .bulk-label {
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 600;
+        }
+        .bulk-input {
+            padding: 8px 10px;
+            background: var(--bg0);
+            border: 1px solid var(--stroke);
+            color: var(--text);
+            border-radius: 6px;
+            min-width: 120px;
+            font-size: 13px;
+        }
         .page-btn {
             padding: 6px 12px;
             border: 1px solid var(--stroke);
@@ -538,12 +571,12 @@
             <small style="color: var(--muted);">STROYKLIMAT</small>
         </div>
         <div class="section-title">Меню</div>
-        <div class="nav-item active" onclick="Admin.showPanel('products')">📦 Товари</div>
-        <div class="nav-item" onclick="Admin.showPanel('categories')">🏷️ Категорії</div>
-        <div class="nav-item" onclick="Admin.showPanel('import')">📥 Імпорт/Експорт</div>
-        <div class="nav-item" onclick="Admin.showPanel('versions')">⏮️ Версії</div>
-        <div class="nav-item" onclick="Admin.showPanel('stats')">📊 Статистика</div>
-        <div class="nav-item" onclick="Admin.showPanel('settings')">⚙️ Налаштування</div>
+        <div class="nav-item active" onclick="Admin.showPanel('products', this)">📦 Товари</div>
+        <div class="nav-item" onclick="Admin.showPanel('categories', this)">🏷️ Категорії</div>
+        <div class="nav-item" onclick="Admin.showPanel('stats', this)">📊 Статистика</div>
+        <div class="nav-item" onclick="Admin.showPanel('settings', this)">⚙️ Налаштування</div>
+        <div class="nav-item" onclick="Admin.showPanel('import', this)">📥 Імпорт/Експорт</div>
+        <div class="nav-item" onclick="Admin.showPanel('versions', this)">⏮️ Версії</div>
         <div style="margin-top: 20px; padding: 0 20px;">
             <button class="btn" onclick="Admin.logout()" style="width: 100%;">Вихід</button>
         </div>
@@ -568,11 +601,48 @@
                     <select id="categoryFilter" onchange="Admin.filterProducts()" style="width: auto; padding: 10px 12px; background: var(--bg0); border: 1px solid var(--stroke); color: var(--text); border-radius: 6px;">
                         <option value="">Всі категорії</option>
                     </select>
+                    <select id="brandFilter" onchange="Admin.filterProducts()" style="width: auto; padding: 10px 12px; background: var(--bg0); border: 1px solid var(--stroke); color: var(--text); border-radius: 6px;">
+                        <option value="">Всі бренди</option>
+                    </select>
                     <button class="btn primary" onclick="Admin.newProduct()">+ Новий Товар</button>
+                </div>
+                <div class="bulk-bar">
+                    <div class="bulk-left">
+                        <label class="bulk-label">
+                            <input type="checkbox" id="selectAllPage" class="checkbox" onclick="Admin.toggleSelectAllPage(this.checked)">
+                            Вибрати на сторінці
+                        </label>
+                        <span id="selectedCount" class="bulk-label">Вибрано: 0</span>
+                    </div>
+                    <div class="bulk-right">
+                        <select id="bulkScope" class="bulk-input">
+                            <option value="selected">Лише вибрані</option>
+                            <option value="filtered">Усі у фільтрі</option>
+                        </select>
+                        <select id="bulkAction" class="bulk-input" onchange="Admin.updateBulkValueUI()">
+                            <option value="">Операція</option>
+                            <option value="discount_percent">Знижка %</option>
+                            <option value="price_delta">Змінити ціну (UAH)</option>
+                            <option value="stock">Змінити наявність</option>
+                            <option value="featured_on">Позначити featured</option>
+                            <option value="featured_off">Зняти featured</option>
+                        </select>
+                        <input id="bulkValue" class="bulk-input" type="number" placeholder="Значення">
+                        <select id="bulkStockValue" class="bulk-input" style="display:none;">
+                            <option value="in_stock">В наявності</option>
+                            <option value="limited">Обмежено</option>
+                            <option value="out_of_stock">Немає</option>
+                        </select>
+                        <button class="btn" onclick="Admin.previewBulk()">Предпросмотр</button>
+                        <button class="btn primary" onclick="Admin.applyBulk()">Застосувати</button>
+                    </div>
                 </div>
                 <div id="alertBox"></div>
                 <div class="table-wrapper">
                     <div class="table-header">
+                        <div class="cell">
+                            <input type="checkbox" id="selectAllPageHeader" class="checkbox" onclick="Admin.toggleSelectAllPage(this.checked)">
+                        </div>
                         <div class="cell">ID</div>
                         <div class="cell">Назва</div>
                         <div class="cell">Категорія</div>
@@ -684,6 +754,8 @@
                 <div class="stats-grid" id="statsGrid"></div>
                 <h3>Товари без інформації</h3>
                 <div id="statsDetails"></div>
+                <h3 style="margin-top: 20px;">Аналітика клієнтів</h3>
+                <div id="analyticsStats"></div>
             </div>
 
             <!-- Settings Panel -->

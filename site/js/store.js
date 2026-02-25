@@ -72,6 +72,9 @@
     if (i >= 0) fav.splice(i, 1);
     else fav.push(id);
     setFav(fav);
+    if (window.Analytics && window.Analytics.trackAddToFav) {
+      window.Analytics.trackAddToFav(id);
+    }
     // событие, чтобы страницы обновлялись
     window.dispatchEvent(new Event("store:change"));
     return fav.includes(id);
@@ -94,6 +97,9 @@
       });
     }
     setCart(cart);
+    if (window.Analytics && window.Analytics.trackAddToCart) {
+      window.Analytics.trackAddToCart(id);
+    }
     window.dispatchEvent(new Event("store:change"));
   }
 

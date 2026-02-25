@@ -14,7 +14,38 @@ window.Admin = (function() {
   let originalCatalog = [];
   let currentEditId = null;
   let currentPage = 1;
+  let lastPageItems = [];
+  const selectedIds = new Set();
   const ITEMS_PER_PAGE = 50;
+  const ADMIN_CATEGORIES_KEY = 'adminCategories';
+  const ADMIN_BRANDS_KEY = 'adminBrands';
+
+  function escHTML(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function readAdminList(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function writeAdminList(key, list) {
+    try {
+      localStorage.setItem(key, JSON.stringify(list));
+    } catch {
+      // ignore
+    }
+  }
 
   // ===== INIT & AUTH =====
   async function init() {
@@ -30,10 +61,25 @@ window.Admin = (function() {
 
   async function initIndexedDB() {
     return new Promise((resolve, reject) => {
+      if (!window.indexedDB) {
+        console.warn('IndexedDB is not available, falling back to localStorage');
+        db = null;
+        resolve();
+        return;
+      }
+
       const request = indexedDB.open(DB_NAME, 2); // Версия 2 для добавления published store
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         db = request.result;
+
+        // Если в существующей БД нет нужных хранилищ — пересоздаем
+        if (!db.objectStoreNames.contains(STORE_NAME) || !db.objectStoreNames.contains(PUBLISHED_STORE)) {
+          db.close();
+          rebuildDatabase().then(resolve).catch(reject);
+          return;
+        }
+
         resolve();
       };
       request.onupgradeneeded = (e) => {
@@ -53,6 +99,30 @@ window.Admin = (function() {
             db.createObjectStore(PUBLISHED_STORE, { keyPath: 'id' });
           }
         }
+      };
+    });
+  }
+
+  function rebuildDatabase() {
+    return new Promise((resolve, reject) => {
+      const del = indexedDB.deleteDatabase(DB_NAME);
+      del.onerror = () => reject(del.error);
+      del.onsuccess = () => {
+        const reopen = indexedDB.open(DB_NAME, 2);
+        reopen.onerror = () => reject(reopen.error);
+        reopen.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+          }
+          if (!db.objectStoreNames.contains(PUBLISHED_STORE)) {
+            db.createObjectStore(PUBLISHED_STORE, { keyPath: 'id' });
+          }
+        };
+        reopen.onsuccess = () => {
+          db = reopen.result;
+          resolve();
+        };
       };
     });
   }
@@ -168,16 +238,31 @@ window.Admin = (function() {
 
   function getFromDB() {
     return new Promise((resolve) => {
-      if (!db) resolve(null);
+      if (!db) {
+        resolve(null);
+        return;
+      }
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        resolve(null);
+        return;
+      }
       const store = db.transaction(STORE_NAME).objectStore(STORE_NAME);
       const request = store.get('current');
       request.onsuccess = () => resolve(request.result?.data);
+      request.onerror = () => resolve(null);
     });
   }
 
   function saveToDB(data) {
     return new Promise((resolve) => {
-      if (!db) resolve();
+      if (!db) {
+        resolve();
+        return;
+      }
+      if (!db.objectStoreNames.contains(STORE_NAME)) {
+        resolve();
+        return;
+      }
       const store = db.transaction(STORE_NAME, 'readwrite').objectStore(STORE_NAME);
       store.put({ id: 'current', data, timestamp: Date.now() });
       resolve();
@@ -188,7 +273,13 @@ window.Admin = (function() {
   async function savePublishedCatalog(data) {
     return new Promise((resolve, reject) => {
       if (!db) {
-        reject(new Error('DB not initialized'));
+        try {
+          localStorage.setItem('publishedCatalog', JSON.stringify(data));
+          localStorage.setItem('catalogTimestamp', Date.now().toString());
+          resolve();
+        } catch (e) {
+          reject(new Error('DB not initialized'));
+        }
         return;
       }
       try {
@@ -216,6 +307,15 @@ window.Admin = (function() {
   async function getPublishedCatalog() {
     return new Promise((resolve, reject) => {
       if (!db) {
+        try {
+          const legacy = localStorage.getItem('publishedCatalog');
+          resolve(legacy ? JSON.parse(legacy) : null);
+        } catch (e) {
+          resolve(null);
+        }
+        return;
+      }
+      if (!db.objectStoreNames.contains(PUBLISHED_STORE)) {
         resolve(null);
         return;
       }
@@ -228,7 +328,7 @@ window.Admin = (function() {
           const result = request.result;
           resolve(result ? result.data : null);
         };
-        request.onerror = () => reject(request.error);
+        request.onerror = () => resolve(null);
       } catch (e) {
         reject(e);
       }
@@ -236,14 +336,25 @@ window.Admin = (function() {
   }
 
   // ===== PRODUCT MANAGEMENT =====
-  function showPanel(panel) {
+  function showPanel(panel, el) {
+    const panelId = panel === 'products' ? 'productPanel' : panel + 'Panel';
+    const targetPanel = document.getElementById(panelId);
+    if (!targetPanel) {
+      console.error('Panel not found:', panelId);
+      return;
+    }
     document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
-    document.getElementById(panel + 'Panel').classList.add('active');
+    targetPanel.classList.add('active');
     document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-    event.target.classList.add('active');
+    if (el && el.classList) {
+      el.classList.add('active');
+    } else if (typeof event !== 'undefined' && event.target) {
+      event.target.classList.add('active');
+    }
 
     if (panel === 'stats') renderStats();
     if (panel === 'versions') renderVersions();
+    if (panel === 'categories') renderCategoriesPanel();
     
     // Close mobile menu when switching panels
     const sidebar = document.getElementById('adminSidebar');
@@ -259,34 +370,47 @@ window.Admin = (function() {
     renderProducts();
   }
 
-  function renderProducts() {
+  function getFilteredProducts() {
     const searchEl = document.getElementById('searchFilter');
     const categoryEl = document.getElementById('categoryFilter');
-    
+    const brandEl = document.getElementById('brandFilter');
+
     if (!searchEl || !categoryEl) {
       console.error('Search elements not found');
-      return;
+      return [];
     }
-    
+
     const search = searchEl.value.toLowerCase();
     const category = categoryEl.value;
+    const brand = brandEl ? brandEl.value : '';
 
-    let filtered = currentDraft.filter(p => {
+    return currentDraft.filter(p => {
       const matchSearch = !search || (p.title && p.title.toLowerCase().includes(search));
       const matchCategory = !category || p.category === category;
-      return matchSearch && matchCategory;
+      const matchBrand = !brand || p.brand === brand;
+      return matchSearch && matchCategory && matchBrand;
     });
+  }
+
+  function renderProducts() {
+    syncSelectedIds();
+    const filtered = getFilteredProducts();
 
     const start = (currentPage - 1) * ITEMS_PER_PAGE;
     const end = start + ITEMS_PER_PAGE;
     const page = filtered.slice(start, end);
+    lastPageItems = page;
 
     const html = page.map(p => {
       const shortId = p.id ? (p.id.length > 8 ? p.id.substring(0, 8) + '...' : p.id) : 'N/A';
       const stockIcon = p.stock === 'in_stock' ? '✓' : (p.stock === 'limited' ? '⚠' : '✗');
       const desc = (p.description || '').substring(0, 50);
+      const isChecked = selectedIds.has(p.id);
       return `
       <div class="table-row" data-id="${p.id}">
+        <div class="cell">
+          <input type="checkbox" class="checkbox" ${isChecked ? 'checked' : ''} onchange="Admin.toggleSelectOne('${p.id}', this.checked)">
+        </div>
         <div class="cell">${shortId}</div>
         <div class="cell">${p.title || 'Без назви'}</div>
         <div class="cell">${p.category || '-'}</div>
@@ -317,6 +441,9 @@ window.Admin = (function() {
       paginationEl.innerHTML = paginationHtml;
     }
     
+    updateSelectAllState();
+    updateSelectedCount();
+
     // Render mobile cards
     renderMobileCards(page);
   }
@@ -329,11 +456,15 @@ window.Admin = (function() {
       const stockIcon = p.stock === 'in_stock' ? '✓' : (p.stock === 'limited' ? '⚠' : '✗');
       const stockText = p.stock === 'in_stock' ? 'В наявності' : (p.stock === 'limited' ? 'Обмежено' : 'Немає');
       const desc = (p.description || 'Без опису').substring(0, 80);
+      const isChecked = selectedIds.has(p.id);
       
       return `
         <div class="product-card">
           <div class="product-card-header">
             <div class="product-card-title">${p.title || 'Без назви'}</div>
+            <label>
+              <input type="checkbox" class="checkbox" ${isChecked ? 'checked' : ''} onchange="Admin.toggleSelectOne('${p.id}', this.checked)">
+            </label>
             <button class="btn" onclick="Admin.editProduct('${p.id}')" style="font-size:12px;padding:6px 10px;margin-left:10px;">✏️</button>
           </div>
           <div class="product-card-body">
@@ -369,6 +500,201 @@ window.Admin = (function() {
     }).join('');
     
     cardsEl.innerHTML = html || '<div style="padding:20px;text-align:center;color:var(--muted);">Товарів не знайдено</div>';
+  }
+
+  function toggleSelectOne(id, checked) {
+    if (checked) {
+      selectedIds.add(id);
+    } else {
+      selectedIds.delete(id);
+    }
+    updateSelectAllState();
+    updateSelectedCount();
+  }
+
+  function toggleSelectAllPage(checked) {
+    if (!lastPageItems.length) return;
+    lastPageItems.forEach(item => {
+      if (checked) {
+        selectedIds.add(item.id);
+      } else {
+        selectedIds.delete(item.id);
+      }
+    });
+    renderProducts();
+  }
+
+  function updateSelectAllState() {
+    const selectAll = document.getElementById('selectAllPage');
+    const selectAllHeader = document.getElementById('selectAllPageHeader');
+    if (!selectAll && !selectAllHeader) return;
+    if (!lastPageItems.length) {
+      if (selectAll) selectAll.checked = false;
+      if (selectAllHeader) selectAllHeader.checked = false;
+      return;
+    }
+    const allChecked = lastPageItems.every(item => selectedIds.has(item.id));
+    if (selectAll) selectAll.checked = allChecked;
+    if (selectAllHeader) selectAllHeader.checked = allChecked;
+  }
+
+  function updateSelectedCount() {
+    const el = document.getElementById('selectedCount');
+    if (el) {
+      el.textContent = `Вибрано: ${selectedIds.size}`;
+    }
+  }
+
+  function syncSelectedIds() {
+    const ids = new Set(currentDraft.map(p => p.id));
+    Array.from(selectedIds).forEach(id => {
+      if (!ids.has(id)) selectedIds.delete(id);
+    });
+  }
+
+  function updateBulkValueUI() {
+    const action = document.getElementById('bulkAction');
+    const value = document.getElementById('bulkValue');
+    const stock = document.getElementById('bulkStockValue');
+    if (!action || !value || !stock) return;
+
+    value.style.display = 'none';
+    stock.style.display = 'none';
+
+    if (action.value === 'discount_percent' || action.value === 'price_delta') {
+      value.style.display = 'inline-block';
+      value.value = '';
+      value.placeholder = action.value === 'discount_percent' ? 'Відсоток' : 'Сума (UAH)';
+    }
+
+    if (action.value === 'stock') {
+      stock.style.display = 'inline-block';
+    }
+  }
+
+  function getBulkTargets() {
+    const scope = document.getElementById('bulkScope');
+    if (scope && scope.value === 'filtered') {
+      return getFilteredProducts();
+    }
+    return currentDraft.filter(p => selectedIds.has(p.id));
+  }
+
+  function buildPreview(targets, action, value) {
+    if (!targets.length) return 'Немає товарів для зміни.';
+
+    let preview = `Товарів: ${targets.length}`;
+    const examples = targets.slice(0, 3);
+
+    if (action === 'discount_percent') {
+      preview += `\nЗнижка: ${value}%`;
+      examples.forEach(p => {
+        const oldPrice = p.price_uah || 0;
+        const newPrice = Math.max(0, Math.round(oldPrice * (1 - value / 100)));
+        preview += `\n${p.title}: ₴${oldPrice} → ₴${newPrice}`;
+      });
+    } else if (action === 'price_delta') {
+      preview += `\nЗміна ціни: ${value} UAH`;
+      examples.forEach(p => {
+        const oldPrice = p.price_uah || 0;
+        const newPrice = Math.max(0, Math.round(oldPrice + value));
+        preview += `\n${p.title}: ₴${oldPrice} → ₴${newPrice}`;
+      });
+    } else if (action === 'stock') {
+      preview += `\nНаявність: ${value}`;
+    } else if (action === 'featured_on') {
+      preview += '\nFeatured: увімкнено';
+    } else if (action === 'featured_off') {
+      preview += '\nFeatured: вимкнено';
+    }
+
+    return preview;
+  }
+
+  function previewBulk() {
+    const action = document.getElementById('bulkAction');
+    const valueInput = document.getElementById('bulkValue');
+    const stock = document.getElementById('bulkStockValue');
+    if (!action || !valueInput || !stock) return;
+    if (!action.value) {
+      showAlert('Оберіть операцію', 'warning');
+      return;
+    }
+
+    let value = 0;
+    if (action.value === 'discount_percent' || action.value === 'price_delta') {
+      value = parseFloat(valueInput.value);
+      if (Number.isNaN(value)) {
+        showAlert('Введіть значення', 'warning');
+        return;
+      }
+    }
+    if (action.value === 'stock') {
+      value = stock.value;
+    }
+
+    const targets = getBulkTargets();
+    alert(buildPreview(targets, action.value, value));
+  }
+
+  function applyBulk() {
+    const action = document.getElementById('bulkAction');
+    const valueInput = document.getElementById('bulkValue');
+    const stock = document.getElementById('bulkStockValue');
+    if (!action || !valueInput || !stock) return;
+    if (!action.value) {
+      showAlert('Оберіть операцію', 'warning');
+      return;
+    }
+
+    let value = 0;
+    if (action.value === 'discount_percent' || action.value === 'price_delta') {
+      value = parseFloat(valueInput.value);
+      if (Number.isNaN(value)) {
+        showAlert('Введіть значення', 'warning');
+        return;
+      }
+    }
+    if (action.value === 'stock') {
+      value = stock.value;
+    }
+
+    const targets = getBulkTargets();
+    if (!targets.length) {
+      showAlert('Немає товарів для зміни', 'warning');
+      return;
+    }
+
+    const preview = buildPreview(targets, action.value, value);
+    if (!confirm(`${preview}\n\nЗастосувати зміни?`)) {
+      return;
+    }
+
+    targets.forEach(p => {
+      if (action.value === 'discount_percent') {
+        const oldPrice = p.price_uah || 0;
+        p.price_uah = Math.max(0, Math.round(oldPrice * (1 - value / 100)));
+      } else if (action.value === 'price_delta') {
+        const oldPrice = p.price_uah || 0;
+        p.price_uah = Math.max(0, Math.round(oldPrice + value));
+      } else if (action.value === 'stock') {
+        p.stock = value;
+      } else if (action.value === 'featured_on') {
+        p.featured = true;
+      } else if (action.value === 'featured_off') {
+        p.featured = false;
+      }
+    });
+
+    saveToDB(currentDraft);
+    savePublishedCatalog(currentDraft).then(() => {
+      showAlert('Масова операція застосована', 'success');
+      recordHistory('bulk:' + action.value, currentDraft.length);
+    }).catch(() => {
+      showAlert('Зміни застосовані, але не збережені в публікації', 'warning');
+    });
+    loadCategories();
+    renderProducts();
   }
   
   function toggleMobileMenu() {
@@ -481,6 +807,7 @@ window.Admin = (function() {
         channel.close();
       }
       showAlert('Товар збережено і опубліковано', 'success');
+      recordHistory('save_product', currentDraft.length);
     }).catch(e => {
       console.error('Publishing failed:', e);
       showAlert('Товар збережено, але помилка публікації', 'warning');
@@ -504,6 +831,7 @@ window.Admin = (function() {
         channel.close();
       }
       showAlert('Товар видалено і опубліковано', 'success');
+      recordHistory('delete_product', currentDraft.length);
     }).catch(e => {
       console.error('Publishing failed:', e);
       showAlert('Товар видалено, але помилка публікації', 'warning');
@@ -523,14 +851,20 @@ window.Admin = (function() {
       console.warn('No products in catalog, skipping category load');
       const select = document.getElementById('editCategory');
       const filter = document.getElementById('categoryFilter');
+      const brandFilter = document.getElementById('brandFilter');
       if (select) select.innerHTML = '<option value="">Без категорії</option>';
       if (filter) filter.innerHTML = '<option value="">Всі категорії</option>';
+      if (brandFilter) brandFilter.innerHTML = '<option value="">Всі бренди</option>';
       return;
     }
-    
-    const categories = [...new Set(currentDraft.map(p => p.category).filter(Boolean))].sort();
+
+    const storedCategories = readAdminList(ADMIN_CATEGORIES_KEY);
+    const storedBrands = readAdminList(ADMIN_BRANDS_KEY);
+    const categories = [...new Set([...storedCategories, ...currentDraft.map(p => p.category).filter(Boolean)])].sort();
+    const brands = [...new Set([...storedBrands, ...currentDraft.map(p => p.brand).filter(Boolean)])].sort();
     const select = document.getElementById('editCategory');
     const filter = document.getElementById('categoryFilter');
+    const brandFilter = document.getElementById('brandFilter');
     
     if (select) {
       select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
@@ -539,6 +873,226 @@ window.Admin = (function() {
     if (filter) {
       filter.innerHTML = '<option value="">Всі категорії</option>' + categories.map(c => `<option value="${c}">${c}</option>`).join('');
     }
+
+    if (brandFilter) {
+      brandFilter.innerHTML = '<option value="">Всі бренди</option>' + brands.map(b => `<option value="${b}">${b}</option>`).join('');
+    }
+  }
+
+  function renderCategoriesPanel() {
+    const list = document.getElementById('categoriesList');
+    if (!list) return;
+
+    const categoriesCount = {};
+    const brandsCount = {};
+    currentDraft.forEach(p => {
+      if (p.category) categoriesCount[p.category] = (categoriesCount[p.category] || 0) + 1;
+      if (p.brand) brandsCount[p.brand] = (brandsCount[p.brand] || 0) + 1;
+    });
+
+    const storedCategories = readAdminList(ADMIN_CATEGORIES_KEY);
+    const storedBrands = readAdminList(ADMIN_BRANDS_KEY);
+    const categories = [...new Set([...storedCategories, ...Object.keys(categoriesCount)])]
+      .sort((a, b) => (categoriesCount[b] || 0) - (categoriesCount[a] || 0));
+    const brands = [...new Set([...storedBrands, ...Object.keys(brandsCount)])]
+      .sort((a, b) => (brandsCount[b] || 0) - (brandsCount[a] || 0));
+
+    const catHtml = categories.map((name) => {
+      const count = categoriesCount[name] || 0;
+      return `
+        <div class="card" data-cat-row data-cat-name="${escHTML(name)}" style="padding:12px 14px; border:1px solid var(--stroke); border-radius:10px;">
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+            <div>
+              <div style="font-weight:700;">${escHTML(name)}</div>
+              <div style="color:var(--muted); font-size:12px;">Товарів: ${count}</div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <input class="form-input" style="min-width:180px" value="${escHTML(name)}">
+              <button class="btn" onclick="Admin.renameCategory(this)">Змінити</button>
+              <button class="btn danger" onclick="Admin.deleteCategory(this)">Видалити</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const brandHtml = brands.map((name) => {
+      const count = brandsCount[name] || 0;
+      return `
+        <div class="card" data-brand-row data-brand-name="${escHTML(name)}" style="padding:12px 14px; border:1px solid var(--stroke); border-radius:10px;">
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+            <div>
+              <div style="font-weight:700;">${escHTML(name)}</div>
+              <div style="color:var(--muted); font-size:12px;">Товарів: ${count}</div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <input class="form-input" style="min-width:180px" value="${escHTML(name)}">
+              <button class="btn" onclick="Admin.renameBrand(this)">Змінити</button>
+              <button class="btn danger" onclick="Admin.deleteBrand(this)">Видалити</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    list.innerHTML = `
+      <div style="display:grid; gap:14px;">
+        <div class="card" style="padding:12px 14px; border:1px solid var(--stroke); border-radius:10px;">
+          <div style="font-weight:700; margin-bottom:8px;">Додати категорію</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <input id="newCategoryName" class="form-input" placeholder="Нова категорія">
+            <button class="btn primary" onclick="Admin.addCategory()">Додати</button>
+          </div>
+        </div>
+        <div class="card" style="padding:12px 14px; border:1px solid var(--stroke); border-radius:10px;">
+          <div style="font-weight:700; margin-bottom:8px;">Додати бренд</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <input id="newBrandName" class="form-input" placeholder="Новий бренд">
+            <button class="btn primary" onclick="Admin.addBrand()">Додати</button>
+          </div>
+        </div>
+        <h3 style="margin:0;">Категорії</h3>
+        <div style="display:grid; gap:10px;">${catHtml || '<div style="color:var(--muted);">Категорії відсутні</div>'}</div>
+        <h3 style="margin:8px 0 0;">Бренди</h3>
+        <div style="display:grid; gap:10px;">${brandHtml || '<div style="color:var(--muted);">Бренди відсутні</div>'}</div>
+      </div>
+    `;
+  }
+
+  function addCategory() {
+    const input = document.getElementById('newCategoryName');
+    if (!input) return;
+    const name = input.value.trim();
+    if (!name) {
+      showAlert('Введіть назву категорії', 'warning');
+      return;
+    }
+    const list = readAdminList(ADMIN_CATEGORIES_KEY);
+    if (list.includes(name)) {
+      showAlert('Категорія вже існує', 'warning');
+      return;
+    }
+    list.push(name);
+    writeAdminList(ADMIN_CATEGORIES_KEY, list);
+    input.value = '';
+    loadCategories();
+    renderCategoriesPanel();
+    showAlert('Категорію додано', 'success');
+    recordHistory('add_category', currentDraft.length);
+  }
+
+  function renameCategory(btn) {
+    const row = btn?.closest('[data-cat-row]');
+    if (!row) return;
+    const oldName = row.getAttribute('data-cat-name');
+    const input = row.querySelector('input');
+    const newName = (input?.value || '').trim();
+    if (!newName) {
+      showAlert('Введіть назву категорії', 'warning');
+      return;
+    }
+    if (oldName === newName) return;
+    currentDraft.forEach(p => {
+      if (p.category === oldName) p.category = newName;
+    });
+    const list = readAdminList(ADMIN_CATEGORIES_KEY).filter(c => c !== oldName);
+    if (!list.includes(newName)) list.push(newName);
+    writeAdminList(ADMIN_CATEGORIES_KEY, list);
+    saveToDB(currentDraft);
+    savePublishedCatalog(currentDraft);
+    loadCategories();
+    renderProducts();
+    renderCategoriesPanel();
+    showAlert('Категорію змінено', 'success');
+    recordHistory('rename_category', currentDraft.length);
+  }
+
+  function deleteCategory(btn) {
+    const row = btn?.closest('[data-cat-row]');
+    if (!row) return;
+    const name = row.getAttribute('data-cat-name');
+    if (!name) return;
+    if (!confirm(`Видалити категорію "${name}"?`)) return;
+    currentDraft.forEach(p => {
+      if (p.category === name) p.category = '';
+    });
+    const list = readAdminList(ADMIN_CATEGORIES_KEY).filter(c => c !== name);
+    writeAdminList(ADMIN_CATEGORIES_KEY, list);
+    saveToDB(currentDraft);
+    savePublishedCatalog(currentDraft);
+    loadCategories();
+    renderProducts();
+    renderCategoriesPanel();
+    showAlert('Категорію видалено', 'success');
+    recordHistory('delete_category', currentDraft.length);
+  }
+
+  function addBrand() {
+    const input = document.getElementById('newBrandName');
+    if (!input) return;
+    const name = input.value.trim();
+    if (!name) {
+      showAlert('Введіть назву бренду', 'warning');
+      return;
+    }
+    const list = readAdminList(ADMIN_BRANDS_KEY);
+    if (list.includes(name)) {
+      showAlert('Бренд вже існує', 'warning');
+      return;
+    }
+    list.push(name);
+    writeAdminList(ADMIN_BRANDS_KEY, list);
+    input.value = '';
+    loadCategories();
+    renderCategoriesPanel();
+    showAlert('Бренд додано', 'success');
+    recordHistory('add_brand', currentDraft.length);
+  }
+
+  function renameBrand(btn) {
+    const row = btn?.closest('[data-brand-row]');
+    if (!row) return;
+    const oldName = row.getAttribute('data-brand-name');
+    const input = row.querySelector('input');
+    const newName = (input?.value || '').trim();
+    if (!newName) {
+      showAlert('Введіть назву бренду', 'warning');
+      return;
+    }
+    if (oldName === newName) return;
+    currentDraft.forEach(p => {
+      if (p.brand === oldName) p.brand = newName;
+    });
+    const list = readAdminList(ADMIN_BRANDS_KEY).filter(b => b !== oldName);
+    if (!list.includes(newName)) list.push(newName);
+    writeAdminList(ADMIN_BRANDS_KEY, list);
+    saveToDB(currentDraft);
+    savePublishedCatalog(currentDraft);
+    loadCategories();
+    renderProducts();
+    renderCategoriesPanel();
+    showAlert('Бренд змінено', 'success');
+    recordHistory('rename_brand', currentDraft.length);
+  }
+
+  function deleteBrand(btn) {
+    const row = btn?.closest('[data-brand-row]');
+    if (!row) return;
+    const name = row.getAttribute('data-brand-name');
+    if (!name) return;
+    if (!confirm(`Видалити бренд "${name}"?`)) return;
+    currentDraft.forEach(p => {
+      if (p.brand === name) p.brand = '';
+    });
+    const list = readAdminList(ADMIN_BRANDS_KEY).filter(b => b !== name);
+    writeAdminList(ADMIN_BRANDS_KEY, list);
+    saveToDB(currentDraft);
+    savePublishedCatalog(currentDraft);
+    loadCategories();
+    renderProducts();
+    renderCategoriesPanel();
+    showAlert('Бренд видалено', 'success');
+    recordHistory('delete_brand', currentDraft.length);
   }
 
   // ===== IMPORT/EXPORT =====
@@ -583,6 +1137,7 @@ window.Admin = (function() {
         saveToDB(currentDraft);
         loadCategories();
         renderProducts();
+        recordHistory('import', currentDraft.length);
         
         showAlert(`✓ Імпортовано: ${diff.added} нових, ${diff.updated} оновлено`, 'success');
       } catch (err) {
@@ -642,11 +1197,124 @@ window.Admin = (function() {
         <li>✅ У наявності: ${stats.inStock} товарів</li>
       </ul>
     `;
+
+    renderAnalyticsStats();
+  }
+
+  function readAnalyticsData() {
+    try {
+      const raw = localStorage.getItem('analyticsData');
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function formatDuration(sec) {
+    const total = Math.max(0, Number(sec) || 0);
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = Math.floor(total % 60);
+    if (h) return `${h} год ${m} хв`;
+    if (m) return `${m} хв ${s} с`;
+    return `${s} с`;
+  }
+
+  function renderAnalyticsStats() {
+    const box = document.getElementById('analyticsStats');
+    if (!box) return;
+
+    const data = readAnalyticsData();
+    if (!data || !data.totals) {
+      box.innerHTML = '<div style="color:var(--muted);">Аналітика ще не зібрана</div>';
+      return;
+    }
+
+    const totals = data.totals || {};
+    const pages = data.pages || {};
+    const products = data.products || {};
+    const searches = data.searches || {};
+    const filters = data.filters || {};
+
+    const topPages = Object.entries(pages)
+      .sort((a, b) => (b[1].views || 0) - (a[1].views || 0))
+      .slice(0, 5)
+      .map(([path, info]) => `<li>${path} — ${info.views || 0} переглядів, ${formatDuration(info.timeSec || 0)}</li>`)
+      .join('');
+
+    const productMap = new Map(currentDraft.map(p => [p.id, p.title]));
+    const topProducts = Object.entries(products)
+      .sort((a, b) => (b[1].views || 0) - (a[1].views || 0))
+      .slice(0, 5)
+      .map(([id, info]) => `<li>${productMap.get(id) || id} — ${info.views || 0} переглядів</li>`)
+      .join('');
+
+    const topSearches = Object.entries(searches)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([q, count]) => `<li>"${q}" — ${count}</li>`)
+      .join('');
+
+    const topFilters = Object.entries(filters)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([f, count]) => `<li>${f} — ${count}</li>`)
+      .join('');
+
+    box.innerHTML = `
+      <div style="display:grid; gap:12px;">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-value">${totals.pageViews || 0}</div><div class="stat-label">Переглядів</div></div>
+          <div class="stat-card"><div class="stat-value">${totals.searches || 0}</div><div class="stat-label">Пошуків</div></div>
+          <div class="stat-card"><div class="stat-value">${totals.productClicks || 0}</div><div class="stat-label">Кліків по товарах</div></div>
+          <div class="stat-card"><div class="stat-value">${totals.addToCart || 0}</div><div class="stat-label">Додано в кошик</div></div>
+          <div class="stat-card"><div class="stat-value">${totals.addToFav || 0}</div><div class="stat-label">В обране</div></div>
+          <div class="stat-card"><div class="stat-value">${formatDuration(totals.totalTimeSec || 0)}</div><div class="stat-label">Час на сайті</div></div>
+        </div>
+        <div>
+          <strong>Топ сторінок</strong>
+          <ul style="list-style: none; padding: 0; margin: 6px 0; color: var(--muted);">${topPages || '<li>Немає даних</li>'}</ul>
+        </div>
+        <div>
+          <strong>Що цікавить клієнта (товари)</strong>
+          <ul style="list-style: none; padding: 0; margin: 6px 0; color: var(--muted);">${topProducts || '<li>Немає даних</li>'}</ul>
+        </div>
+        <div>
+          <strong>Популярні пошуки</strong>
+          <ul style="list-style: none; padding: 0; margin: 6px 0; color: var(--muted);">${topSearches || '<li>Немає даних</li>'}</ul>
+        </div>
+        <div>
+          <strong>Популярні фільтри</strong>
+          <ul style="list-style: none; padding: 0; margin: 6px 0; color: var(--muted);">${topFilters || '<li>Немає даних</li>'}</ul>
+        </div>
+      </div>
+    `;
   }
 
   // ===== VERSIONS =====
   function renderVersions() {
-    document.getElementById('versionsList').innerHTML = '<p style="color:var(--muted);">Версіонування в розробці...</p>';
+    const list = document.getElementById('versionsList');
+    if (!list) return;
+    let history = [];
+    try {
+      history = JSON.parse(localStorage.getItem('catalogHistory') || '[]');
+    } catch {
+      history = [];
+    }
+    if (!history.length) {
+      list.innerHTML = '<p style="color:var(--muted);">Історія поки порожня.</p>';
+      return;
+    }
+    const html = history.map(h => {
+      const date = new Date(h.time || Date.now());
+      return `
+        <div class="card" style="padding:12px 14px; border:1px solid var(--stroke); border-radius:10px; margin-bottom:10px;">
+          <div style="font-weight:700;">${h.action || 'update'}</div>
+          <div style="color:var(--muted); font-size:12px;">${date.toLocaleString()} · Товарів: ${h.count || 0}</div>
+        </div>
+      `;
+    }).join('');
+    list.innerHTML = html;
   }
 
   // ===== SETTINGS =====
@@ -668,6 +1336,7 @@ window.Admin = (function() {
         channel.close();
       }
       showAlert('Каталог опублікований! Користувачі бачитимуть нові дані', 'success');
+      recordHistory('publish', currentDraft.length);
     } catch (e) {
       console.error('Publishing failed:', e);
       showAlert('Помилка публікації каталогу', 'error');
@@ -681,6 +1350,17 @@ window.Admin = (function() {
       renderProducts();
       loadCategories();
       showAlert('Каталог скинуто', 'success');
+      recordHistory('reset', currentDraft.length);
+    }
+  }
+
+  function recordHistory(action, count) {
+    try {
+      const history = JSON.parse(localStorage.getItem('catalogHistory') || '[]');
+      history.unshift({ action, count, time: Date.now() });
+      localStorage.setItem('catalogHistory', JSON.stringify(history.slice(0, 50)));
+    } catch {
+      // ignore
     }
   }
 
@@ -722,6 +1402,8 @@ window.Admin = (function() {
         }
       });
     }
+
+    updateBulkValueUI();
   }
 
   function showAlert(message, type = 'info') {
@@ -751,7 +1433,18 @@ window.Admin = (function() {
     saveSettings,
     publishCatalog,
     resetCatalog,
-    toggleMobileMenu
+    toggleMobileMenu,
+    toggleSelectOne,
+    toggleSelectAllPage,
+    previewBulk,
+    applyBulk,
+    updateBulkValueUI,
+    addCategory,
+    renameCategory,
+    deleteCategory,
+    addBrand,
+    renameBrand,
+    deleteBrand
   };
 })();
 

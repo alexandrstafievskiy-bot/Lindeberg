@@ -327,6 +327,7 @@
       setParam("cat", "");
       clearActive();
       allChip.classList.add("active");
+      window.Analytics?.trackFilter("category", "all");
       applyFilters();
     }, !getParam("cat"));
     catsBar.appendChild(allChip);
@@ -343,6 +344,7 @@
         setParam("cat", mainCat.name);
         clearActive();
         mainChip.classList.add("active");
+        window.Analytics?.trackFilter("category", mainCat.name);
         applyFilters();
       }, isMainActive);
       
@@ -358,6 +360,7 @@
             setParam("cat", subCat.name);
             clearActive();
             subChip.classList.add("active");
+            window.Analytics?.trackFilter("category", subCat.name);
             applyFilters();
           }, isSubActive, true);
           
@@ -415,6 +418,7 @@
       STATE.page = 1;
       setParam("q", STATE.query);
       setParam("page", "1");
+      window.Analytics?.trackSearch(STATE.query);
       applyFilters();
     });
 
@@ -424,6 +428,7 @@
       STATE.page = 1;
       setParam("sort", STATE.sort);
       setParam("page", "1");
+      window.Analytics?.trackFilter("sort", STATE.sort);
       applyFilters();
     });
 
@@ -432,6 +437,7 @@
       STATE.page = 1;
       setParam("ps", String(STATE.pageSize));
       setParam("page", "1");
+      window.Analytics?.trackFilter("page_size", String(STATE.pageSize));
       applyFilters();
     });
 
@@ -451,6 +457,7 @@
       onlyInStockChk.addEventListener("change", () => {
         STATE.onlyInStock = !!onlyInStockChk.checked;
         STATE.page = 1;
+        window.Analytics?.trackFilter("stock", STATE.onlyInStock ? "in_stock" : "all");
         applyFilters();
       });
     }
@@ -459,6 +466,7 @@
       hideZeroChk.addEventListener("change", () => {
         STATE.hidePriceZero = !!hideZeroChk.checked;
         STATE.page = 1;
+        window.Analytics?.trackFilter("price_zero", STATE.hidePriceZero ? "hide" : "show");
         applyFilters();
       });
     }
@@ -467,6 +475,7 @@
       priceFromInp.addEventListener("input", () => {
         STATE.priceFrom = Number(priceFromInp.value || 0);
         STATE.page = 1;
+        window.Analytics?.trackFilter("price_from", String(STATE.priceFrom));
         applyFilters();
       });
     }
@@ -475,6 +484,7 @@
         const v = priceToInp.value;
         STATE.priceTo = v === "" ? Infinity : Number(v || 0);
         STATE.page = 1;
+        window.Analytics?.trackFilter("price_to", v === "" ? "max" : String(STATE.priceTo));
         applyFilters();
       });
     }
@@ -493,6 +503,7 @@
         if (priceToInp) priceToInp.value = "";
 
         setParam("type", "");
+        window.Analytics?.trackFilter("reset", "1");
         STATE.page = 1;
         applyFilters();
       });

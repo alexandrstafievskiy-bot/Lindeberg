@@ -17,6 +17,10 @@
       let p = catalog.find(x=>String(x.id) === String(id));
       if(!p){ document.getElementById('product').innerHTML = '<div>Товар не знайдено.</div>'; return; }
 
+      if (window.Analytics && window.Analytics.trackProductClick) {
+        window.Analytics.trackProductClick(p.id);
+      }
+
       document.title = (p.title || 'Товар') + ' — STROYKLIMAT';
 
       const images = (p.images || []).filter(u => u && !String(u).includes('tov-bis-7') && !String(u).includes('w350_h100'));
