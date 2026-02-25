@@ -944,7 +944,6 @@ img{max-width:100%; display:block}
   display:grid; place-items:center;
   overflow:hidden;
   transform: scale(1.4);
-  background:#ffffff;
 }
 .brand .logo img{
   width:100%; height:100%; object-fit:contain;
@@ -952,9 +951,6 @@ img{max-width:100%; display:block}
 }
 html[data-theme="light"] .brand .logo img{
   filter: none;
-}
-html[data-theme="light"] .brand .logo{
-  background:#f8f9fb;
 }
 .brand .name{
   display:flex; flex-direction:column; line-height:1.05;
