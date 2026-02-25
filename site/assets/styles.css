@@ -2484,22 +2484,26 @@ html[data-theme="light"] .testimonial-dot.active {
 .testimonial-card-badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 12px;
+  gap: 8px;
+  margin-top: 16px;
+  row-gap: 10px;
 }
 
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  font-size: 11px;
-  line-height: 1.4;
-  white-space: nowrap;
-  background: rgba(47, 125, 225, 0.1);
-  border: 1px solid rgba(47, 125, 225, 0.2);
-  border-radius: 12px;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: normal;
+  background: rgba(47, 125, 225, 0.12);
+  border: 1px solid rgba(47, 125, 225, 0.25);
+  border-radius: 14px;
   color: var(--text);
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 /* Review Form */
