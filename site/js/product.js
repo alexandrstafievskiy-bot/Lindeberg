@@ -84,7 +84,7 @@
         </article>`; }
 
       document.getElementById('related').innerHTML = (related.map(cardHTML).join(''));
-      document.getElementById('related').addEventListener('click', (e)=>{ const add = e.target.closest('[data-add]'); const fav = e.target.closest('[data-fav]'); if(add){ const id = add.getAttribute('data-add'); if(window.Store && window.Store.addToCart) window.Store.addToCart(id,1); if(typeof mountHeader === 'function') mountHeader(); } if(fav){ const pid = fav.getAttribute('data-fav'); if(window.Store && window.Store.toggleFav) { const on = window.Store.toggleFav(pid); fav.textContent = 'Обране'; if(typeof mountHeader === 'function') mountHeader(); } } });
+      document.getElementById('related').addEventListener('click', (e)=>{ const add = e.target.closest('[data-add]'); const fav = e.target.closest('[data-fav]'); if(add){ const id = add.getAttribute('data-add'); const rel = (catalog || []).find(x => String(x.id) === String(id)); if(rel && window.Store && window.Store.addToCart) window.Store.addToCart(rel,1); if(typeof mountHeader === 'function') mountHeader(); } if(fav){ const pid = fav.getAttribute('data-fav'); if(window.Store && window.Store.toggleFav) { const on = window.Store.toggleFav(pid); fav.textContent = 'Обране'; if(typeof mountHeader === 'function') mountHeader(); } } });
 
     }catch(err){ console.error(err); }
   }

@@ -4,7 +4,7 @@
  */
 
 window.Admin = (function() {
-  const PIN_HASH = "81dc9bdb52d04dc20036dbd8313ed055"; // MD5("1234")
+  const AUTH_KEY = 'adminAuth';
   const DB_NAME = 'stroyklimat-admin';
   const STORE_NAME = 'catalog-versions';
   const PUBLISHED_STORE = 'published';
@@ -143,19 +143,8 @@ window.Admin = (function() {
     }
   }
 
-  function hashPassword(pin) {
-    // Simple hash - не безопасный, но для демо подойдёт
-    let hash = 0;
-    for (let i = 0; i < pin.length; i++) {
-      hash = ((hash << 5) - hash) + pin.charCodeAt(i);
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16);
-  }
-
   function checkAuth() {
-    const stored = localStorage.getItem('adminAuth');
-    if (stored) {
+    if (isAuthenticated()) {
       document.querySelector('.admin-wrapper').style.display = 'grid';
       document.getElementById('loginModal').style.display = 'none';
     } else {
@@ -165,14 +154,35 @@ window.Admin = (function() {
   }
 
   function isAuthenticated() {
-    return localStorage.getItem('adminAuth') === 'true';
+    return sessionStorage.getItem(AUTH_KEY) === 'true';
   }
 
-  function login() {
-    const pin = document.getElementById('adminPin').value;
-    
-    if (pin === 'StroyKKlimat2026') {
-      localStorage.setItem('adminAuth', 'true');
+  async function verifyPin(pin) {
+    try {
+      const response = await fetch('./api/catalog.php?action=auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ password: pin })
+      });
+      if (!response.ok) return false;
+      const payload = await response.json();
+      return !!payload.success;
+    } catch (err) {
+      console.error('PIN verification failed:', err);
+      return false;
+    }
+  }
+
+  async function login() {
+    const pin = (document.getElementById('adminPin').value || '').trim();
+    if (!pin) {
+      showAlert('Введіть PIN', 'warning');
+      return;
+    }
+    const isValid = await verifyPin(pin);
+    if (isValid) {
+      sessionStorage.setItem(AUTH_KEY, 'true');
       document.querySelector('.admin-wrapper').style.display = 'grid';
       document.getElementById('loginModal').style.display = 'none';
       setupUI();
@@ -184,7 +194,8 @@ window.Admin = (function() {
 
   function logout() {
     if (confirm('Вихід з адмін панелі?')) {
-      localStorage.removeItem('adminAuth');
+      sessionStorage.removeItem(AUTH_KEY);
+      localStorage.removeItem(AUTH_KEY);
       location.href = './index.html';
     }
   }

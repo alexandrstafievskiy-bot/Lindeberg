@@ -338,45 +338,54 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
-    "@type": "LocalBusiness",
+    "@type": "HVACBusiness",
     "name": "STROYKLIMAT (ТОВ \"Бис 7\")",
-    "description": "Професійне проектування, продаж та встановлення систем вентиляції, кондиціонування та кліматичного обладнання для будинків, бізнесу та промислових об'єктів",
-    "url": "/",
+    "url": "https://stroyklimat.com",
+    "logo": "https://stroyklimat.com/logo.png",
+    "image": "https://stroyklimat.com/logo.png",
+    "description": "Проектування, продаж та монтаж вентиляції, кондиціонування та кліматичних систем",
     "email": "denis_bis@ukr.net",
     "telephone": "+380509735955",
     "priceRange": "$$",
+
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "проспект Відрадний, 95 Г, офіс 428",
+      "postalCode": "03068",
+      "addressLocality": "Київ",
+      "addressCountry": "UA"
+    },
+
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": 50.41955410317759,
+      "longitude": 30.42825459363552
+    },
+
     "areaServed": {
       "@type": "Country",
       "name": "Україна"
     },
-    "serviceType": [
-      "Проектування систем вентиляції",
-      "Монтаж систем кондиціонування",
-      "Продаж кліматичного обладнання",
-      "Установка вентиляції",
-      "Сервісне обслуговування HVAC"
+
+    "sameAs": [
+      "https://www.instagram.com/bis_7_ukraine"
     ],
-    "hasOfferCatalog": {
-      "@type": "OfferCatalog",
-      "name": "Каталог кліматичного обладнання",
-      "itemListElement": [
-        {
-          "@type": "OfferCatalog",
-          "name": "Вентиляція",
-          "description": "Системи вентиляції для будинків та бізнесу"
-        },
-        {
-          "@type": "OfferCatalog",
-          "name": "Кондиціонування",
-          "description": "Кондиціонери та системи охолодження"
-        },
-        {
-          "@type": "OfferCatalog",
-          "name": "Димоходи",
-          "description": "Димохідні системи та комплектуючі"
-        }
-      ]
-    },
+
+    "openingHoursSpecification": [
+      {
+        "@type": "OpeningHoursSpecification",
+        "dayOfWeek": [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday"
+        ],
+        "opens": "09:00",
+        "closes": "18:00"
+      }
+    ],
+
     "aggregateRating": {
       "@type": "AggregateRating",
       "ratingValue": "5",

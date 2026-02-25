@@ -9,9 +9,7 @@ require_once __DIR__ . '/database.php';
 
 // Handle CORS preflight
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header('Access-Control-Allow-Origin: ' . ALLOW_ORIGIN);
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    applyCorsHeaders();
     http_response_code(200);
     exit;
 }
@@ -20,11 +18,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 $method = $_SERVER['REQUEST_METHOD'];
 $path = $_GET['action'] ?? 'list';
 
-// Initialize database
-try {
-    $db = Database::getInstance();
-} catch (Exception $e) {
-    errorResponse('Database connection failed', 500);
+// Initialize database lazily (auth route does not need DB)
+$db = null;
+if ($path !== 'auth') {
+    try {
+        $db = Database::getInstance();
+    } catch (Exception $e) {
+        errorResponse('Database connection failed', 500);
+    }
 }
 
 // Get JSON input for POST/PUT/DELETE
@@ -38,7 +39,11 @@ if (in_array($method, ['POST', 'PUT', 'DELETE'])) {
 
 // Check admin authentication for write operations
 function checkAuth($input) {
-    if (!isset($input['password']) || $input['password'] !== ADMIN_PASSWORD) {
+    if (ADMIN_PASSWORD === 'CHANGE_ME') {
+        errorResponse('Server admin password is not configured', 500);
+    }
+    $provided = isset($input['password']) ? (string)$input['password'] : '';
+    if ($provided === '' || !hash_equals(ADMIN_PASSWORD, $provided)) {
         errorResponse('Unauthorized', 401);
     }
 }
@@ -46,6 +51,13 @@ function checkAuth($input) {
 // === ROUTES ===
 
 switch ($path) {
+    case 'auth':
+        if ($method !== 'POST') {
+            errorResponse('Method not allowed', 405);
+        }
+        checkAuth($input);
+        successResponse(['authenticated' => true], 'Authorized');
+        break;
     
     // GET /api/catalog.php?action=list
     // Отримати весь каталог

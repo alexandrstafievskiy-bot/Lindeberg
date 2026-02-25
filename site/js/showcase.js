@@ -6,6 +6,15 @@
 window.Showcase = (function() {
   const STORE_MODE_KEY = 'storeMode';
   
+  function escapeHTML(value) {
+    return String(value ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+  
   function init() {
     const mode = localStorage.getItem(STORE_MODE_KEY) || 'shop';
     applyMode(mode);
@@ -35,6 +44,8 @@ window.Showcase = (function() {
   }
 
   function showPriceRequestModal(productId, productTitle, productPrice) {
+    const encodedId = encodeURIComponent(String(productId ?? ''));
+    const encodedTitle = encodeURIComponent(String(productTitle ?? ''));
     const modal = document.createElement('div');
     modal.className = 'showcase-modal';
     modal.style.display = 'none';
@@ -43,7 +54,7 @@ window.Showcase = (function() {
       <div class="showcase-form">
         <div style="padding: 30px;">
           <h2>Запросити ціну</h2>
-          <p style="color: var(--muted); margin-bottom: 20px;">${productTitle}</p>
+          <p style="color: var(--muted); margin-bottom: 20px;">${escapeHTML(productTitle)}</p>
           
           <div class="form-group">
             <label class="form-label">Ваше ім'я *</label>
@@ -66,7 +77,7 @@ window.Showcase = (function() {
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px;">
-            <button class="btn primary" onclick="Showcase.sendRequest('${productId}', '${productTitle}')">Надіслати</button>
+            <button class="btn primary" onclick="Showcase.sendRequest('${encodedId}', '${encodedTitle}')">Надіслати</button>
             <button class="btn" onclick="this.closest('.showcase-modal').remove()">Скасувати</button>
           </div>
 
@@ -82,6 +93,8 @@ window.Showcase = (function() {
   }
 
   function sendRequest(productId, productTitle) {
+    const decodedProductId = decodeURIComponent(String(productId ?? ''));
+    const decodedProductTitle = decodeURIComponent(String(productTitle ?? ''));
     const name = document.getElementById('priceReqName').value.trim();
     const phone = document.getElementById('priceReqPhone').value.trim();
     const email = document.getElementById('priceReqEmail').value.trim();
@@ -96,8 +109,8 @@ window.Showcase = (function() {
     const text = `
 📋 ЗАПИТ ЦІНИ
 
-Товар: ${productTitle}
-ID: ${productId}
+Товар: ${decodedProductTitle}
+ID: ${decodedProductId}
 
 👤 Контакти:
 Ім'я: ${name}

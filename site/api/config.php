@@ -8,10 +8,12 @@
 define('DB_PATH', __DIR__ . '/../data/stroyklimat.db');
 
 // Admin credentials
-define('ADMIN_PASSWORD', 'StroyKKlimat2026'); // Змініть на продакшені!
+$adminPassword = getenv('STROYKLIMAT_ADMIN_PASSWORD');
+define('ADMIN_PASSWORD', ($adminPassword !== false && $adminPassword !== '') ? $adminPassword : 'CHANGE_ME');
 
 // CORS settings
-define('ALLOW_ORIGIN', '*'); // На продакшені вкажіть ваш домен
+$allowOrigin = getenv('STROYKLIMAT_ALLOW_ORIGIN');
+define('ALLOW_ORIGIN', ($allowOrigin !== false && $allowOrigin !== '') ? $allowOrigin : '');
 
 // Error reporting (вимкніть на продакшені)
 error_reporting(E_ALL);
@@ -22,13 +24,23 @@ ini_set('error_log', __DIR__ . '/../data/api_errors.log');
 // Timezone
 date_default_timezone_set('Europe/Kiev');
 
+function applyCorsHeaders() {
+    $origin = $_SERVER['HTTP_ORIGIN'] ?? '';
+    if (ALLOW_ORIGIN === '*') {
+        header('Access-Control-Allow-Origin: *');
+    } elseif (ALLOW_ORIGIN !== '' && $origin === ALLOW_ORIGIN) {
+        header('Access-Control-Allow-Origin: ' . ALLOW_ORIGIN);
+        header('Vary: Origin');
+    }
+    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+}
+
 // JSON response helper
 function jsonResponse($data, $statusCode = 200) {
     http_response_code($statusCode);
     header('Content-Type: application/json; charset=utf-8');
-    header('Access-Control-Allow-Origin: ' . ALLOW_ORIGIN);
-    header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
-    header('Access-Control-Allow-Headers: Content-Type, Authorization');
+    applyCorsHeaders();
     
     echo json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     exit;
