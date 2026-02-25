@@ -1,28 +1,42 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" width="200" height="280">
-  <!-- Background -->
-  <rect width="200" height="280" fill="transparent"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 220" width="200" height="220">
+  <style>
+    .logo-stroke { stroke: #1a1f35; fill: none; }
+    .logo-fill { fill: #1a1f35; }
+  </style>
   
-  <!-- Circle with ventilation symbol -->
-  <g transform="translate(100, 80)">
-    <!-- Outer circle -->
-    <circle cx="0" cy="0" r="60" fill="none" stroke="currentColor" stroke-width="8"/>
-    <!-- Diagonal line (prohibition symbol) -->
-    <line x1="-42" y1="42" x2="42" y2="-42" stroke="currentColor" stroke-width="8" stroke-linecap="round"/>
-    <!-- Inner circle -->
-    <circle cx="0" cy="0" r="42" fill="none" stroke="currentColor" stroke-width="6"/>
-    <!-- Ventilation blades/slats -->
-    <g opacity="0.9">
-      <path d="M -25,-15 L -25,15" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
-      <path d="M 0,-20 L 0,20" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
-      <path d="M 25,-15 L 25,15" stroke="currentColor" stroke-width="5" stroke-linecap="round"/>
+  <!-- Ventilation fan symbol -->
+  <g transform="translate(100, 60)">
+    <!-- Outer circle (fan housing) -->
+    <circle cx="0" cy="0" r="50" class="logo-stroke" stroke-width="6"/>
+    
+    <!-- Fan blades (4 curved blades) - wider and longer -->
+    <g class="logo-fill">
+      <!-- Blade 1 (top-right) -->
+      <path d="M 8,0 Q 30,-20 40,-32 L 25,-18 Q 12,-8 8,0 Z"/>
+      <!-- Blade 2 (bottom-right) -->
+      <path d="M 0,8 Q 20,30 32,40 L 18,25 Q 8,12 0,8 Z"/>
+      <!-- Blade 3 (bottom-left) -->
+      <path d="M -8,0 Q -30,20 -40,32 L -25,18 Q -12,8 -8,0 Z"/>
+      <!-- Blade 4 (top-left) -->
+      <path d="M 0,-8 Q -20,-30 -32,-40 L -18,-25 Q -8,-12 0,-8 Z"/>
+    </g>
+    
+    <!-- Center hub -->
+    <circle cx="0" cy="0" r="12" class="logo-fill"/>
+    <circle cx="0" cy="0" r="6" fill="#ffffff"/>
+    
+    <!-- Air flow arrows -->
+    <g class="logo-stroke" stroke-width="3">
+      <path d="M -45,20 Q -50,25 -48,30" stroke-linecap="round"/>
+      <path d="M -50,30 L -48,30 L -48,28" stroke-linecap="round"/>
     </g>
   </g>
   
   <!-- VENT text -->
-  <text x="100" y="200" font-family="'Arial Black', Arial, sans-serif" font-size="48" font-weight="900" 
-        fill="currentColor" text-anchor="middle" letter-spacing="3">VENT</text>
+  <text x="100" y="160" font-family="'Arial Black', Arial, sans-serif" font-size="42" font-weight="900" 
+        class="logo-fill" text-anchor="middle" letter-spacing="3">VENT</text>
   
   <!-- SOLUTIONS text -->
-  <text x="100" y="235" font-family="Arial, sans-serif" font-size="22" font-weight="400" 
-        fill="currentColor" text-anchor="middle" letter-spacing="6">SOLUTIONS</text>
+  <text x="100" y="190" font-family="Arial, sans-serif" font-size="20" font-weight="400" 
+        class="logo-fill" text-anchor="middle" letter-spacing="5">SOLUTIONS</text>
 </svg>

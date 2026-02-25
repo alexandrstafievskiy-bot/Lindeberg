@@ -45,7 +45,7 @@
             <div class="buyrow">
               <button class="btn primary add-to-cart" id="addCart">В кошик</button>
               <button class="btn primary price-request-btn" id="priceRequest">💬 Запросити ціну</button>
-              <button class="btn" id="toggleFav">${favOn ? '★ В обраному' : '☆ Додати в обране'}</button>
+              <button class="btn" id="toggleFav">${favOn ? 'В обраному' : 'Додати в обране'}</button>
               <a class="btn" href="tel:+380509735955">📞 Подзвонити</a>
             </div>
             <div class="desc"><h3>Опис / Інформація</h3><div class="text">${escapeHTML(String(p.description||'')).replace(/\n/g,'<br/>')}</div></div>
@@ -62,7 +62,7 @@
           }
         });
 
-        document.getElementById('toggleFav')?.addEventListener('click', ()=>{ if(window.Store && window.Store.toggleFav){ const on = window.Store.toggleFav(p.id); document.getElementById('toggleFav').textContent = on ? '★ В обраному' : '☆ Додати в обране'; if(typeof mountHeader === 'function') mountHeader(); } });
+        document.getElementById('toggleFav')?.addEventListener('click', ()=>{ if(window.Store && window.Store.toggleFav){ const on = window.Store.toggleFav(p.id); document.getElementById('toggleFav').textContent = on ? 'В обраному' : 'Додати в обране'; if(typeof mountHeader === 'function') mountHeader(); } });
       }
 
       render();
@@ -84,7 +84,7 @@
         </article>`; }
 
       document.getElementById('related').innerHTML = (related.map(cardHTML).join(''));
-      document.getElementById('related').addEventListener('click', (e)=>{ const add = e.target.closest('[data-add]'); const fav = e.target.closest('[data-fav]'); if(add){ const id = add.getAttribute('data-add'); if(window.Store && window.Store.addToCart) window.Store.addToCart(id,1); if(typeof mountHeader === 'function') mountHeader(); } if(fav){ const pid = fav.getAttribute('data-fav'); if(window.Store && window.Store.toggleFav) { const on = window.Store.toggleFav(pid); fav.textContent = (on ? '★' : '☆') + ' Обране'; if(typeof mountHeader === 'function') mountHeader(); } } });
+      document.getElementById('related').addEventListener('click', (e)=>{ const add = e.target.closest('[data-add]'); const fav = e.target.closest('[data-fav]'); if(add){ const id = add.getAttribute('data-add'); if(window.Store && window.Store.addToCart) window.Store.addToCart(id,1); if(typeof mountHeader === 'function') mountHeader(); } if(fav){ const pid = fav.getAttribute('data-fav'); if(window.Store && window.Store.toggleFav) { const on = window.Store.toggleFav(pid); fav.textContent = 'Обране'; if(typeof mountHeader === 'function') mountHeader(); } } });
 
     }catch(err){ console.error(err); }
   }

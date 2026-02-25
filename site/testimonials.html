@@ -9,37 +9,29 @@
 </head>
 <body>
   <header class="topbar">
-    <div class="container">
-      <div class="topbar-inner">
-        <a class="brand" href="./index.html" aria-label="STROYKLIMAT Home">
-          <div class="logo"><img src="./assets/logo.svg" alt="STROYKLIMAT"/></div>
-          <div class="name">
-            <strong>STROYKLIMAT</strong>
-            <span>ТОВ "Бис 7"</span>
-          </div>
-        </a>
-
-        <form class="search" data-search-form>
-          <input data-search-input placeholder="Пошук: вентилятор, кондиціонер, димохід…"/>
-          <button type="submit">🔍</button>
-        </form>
-
-        <nav class="actions">
-          <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme" title="Переключити тему">🌙</button>
-          <a class="pill" href="./favorites.html">Обране <b data-fav-count>0</b></a>
-          <a class="pill" href="./cart.html">🛒 Кошик <b data-cart-count>0</b></a>
-        </nav>
-      </div>
-
-      <div class="navline">
-        <div class="nav">
-          <a class="chip" href="./index.html">Головна</a>
-          <a class="chip" href="./catalog.html">Каталог</a>
-          <a class="chip" href="./about.html">Про нас</a>
-          <a class="chip" href="./delivery.html">Доставка і оплата</a>
-          <a class="chip active" href="./testimonials.html">⭐ Відгуки</a>
-          <a class="chip" href="./contacts.html">Контакти</a>
+    <div class="container topbar-inner">
+      <a class="brand" href="./index.html">
+        <div class="logo"><img src="./assets/logo.svg" alt="STROYKLIMAT"/></div>
+        <div class="name">
+          <strong>STROYKLIMAT</strong>
+          <span>ТОВ "Бис 7"</span>
         </div>
+      </a>
+      <div class="search">
+        <input type="search" placeholder="🔍 Пошук..."/>
+      </div>
+      <div class="actions">
+        <a href="./favorites.html" class="pill">❤️ <span data-fav-count>0</span></a>
+        <a href="./cart.html" class="pill">🛒 <span data-cart-count>0</span></a>
+        <button class="pill" id="theme-toggle">🌙</button>
+      </div>
+      <div class="navline">
+        <a href="./index.html" class="navlink">Головна</a>
+        <a href="./catalog.html" class="navlink">Каталог</a>
+        <a href="./about.html" class="navlink">Про нас</a>
+        <a href="./delivery.html" class="navlink">Доставка</a>
+        <a href="./testimonials.html" class="navlink" style="color: var(--brand);">Відгуки</a>
+        <a href="./contacts.html" class="navlink">Контакти</a>
       </div>
     </div>
   </header>
@@ -224,20 +216,6 @@
             <span class="badge">✅ Гарне обслуговування</span>
             <span class="badge">📞 Швидко зв'язались</span>
           </div>
-        </div>
-
-        <!-- Testimonial 9 -->
-        <div class="testimonial-card">
-          <div class="testimonial-card-header">
-            <div>
-              <strong>Покупець</strong>
-              <div class="testimonial-card-rating">⭐⭐⭐⭐⭐ Відмінно</div>
-            </div>
-            <span class="testimonial-card-date">18 вересня 2020</span>
-          </div>
-          <blockquote class="testimonial-card-text">
-            Відмінно
-          </blockquote>
         </div>
       </div>
 

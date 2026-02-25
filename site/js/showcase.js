@@ -134,7 +134,7 @@ ${comment ? `💬 Коментар:\n${comment}` : ''}
             <a href="https://viber.click/${phoneEncoded}?text=${baseText}" class="btn primary" target="_blank" onclick="this.closest('.showcase-modal').remove()">💬 Viber</a>
             <a href="https://t.me/stroyklimat?text=${baseText}" class="btn" target="_blank" onclick="this.closest('.showcase-modal').remove()">✈️ Telegram</a>
             <a href="https://wa.me/${phoneEncoded.replace(/[^0-9]/g, '')}?text=${baseText}" class="btn" target="_blank" onclick="this.closest('.showcase-modal').remove()">💚 WhatsApp</a>
-            <a href="mailto:info@stroyklimat.net?subject=Запрос%20цены&body=${baseText}" class="btn" target="_blank" onclick="this.closest('.showcase-modal').remove()">📧 Email</a>
+            <a href="mailto:denis_bis@ukr.net?subject=Запрос%20цены&body=${baseText}" class="btn" target="_blank" onclick="this.closest('.showcase-modal').remove()">📧 Email</a>
           </div>
 
           <p style="color: var(--muted); font-size: 12px; margin-top: 20px;">Текст вже в буфері обміну ✓</p>
