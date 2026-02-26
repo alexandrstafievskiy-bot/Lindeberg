@@ -552,8 +552,9 @@
     <div class="login-card">
         <h1>🔐 Адмін Панель</h1>
         <p style="color: var(--muted); margin-bottom: 20px;">Введи PIN для доступу</p>
-        <input type="password" id="adminPin" placeholder="PIN">
+        <input type="password" id="adminPin" placeholder="PIN" onkeydown="if(event.key==='Enter') Admin.login()">
         <button class="btn primary" onclick="Admin.login()" style="width: 100%; cursor: pointer;">Увійти</button>
+        <div id="loginError" class="alert" style="display:none; margin-top: 10px;"></div>
     </div>
 </div>
 
@@ -773,7 +774,13 @@
                     </label>
                 </div>
 
-                <button class="btn primary" onclick="Admin.saveSettings()" style="margin-top: 20px;">Зберегти</button>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label class="form-label">🔑 Локальний PIN (для входу без сервера)</label>
+                    <input type="password" id="localPinInput" class="form-input" placeholder="Новий PIN (залиште пустим, щоб не змінювати)">
+                    <small style="color: var(--muted); font-size: 12px;">Мінімум 4 символи</small>
+                </div>
+
+                <button class="btn primary" onclick="Admin.saveSettings()" style="margin-top: 10px;">Зберегти</button>
                 <button class="btn" onclick="Admin.publishCatalog()" style="margin-top: 10px;">📤 Опублікувати каталог</button>
                 <button class="btn danger" onclick="Admin.resetCatalog()" style="margin-top: 10px;">🔄 Скинути на оригінал</button>
             </div>

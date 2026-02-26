@@ -24,10 +24,11 @@ Visit: **http://localhost:8000/admin.html**
 Login with PIN: **1234**
 
 ### Step 3: Change PIN (1 min)
-Before deploying, change the demo PIN:
-1. Edit `js/admin.js` (search for `1234`)
-2. Replace with your 4-digit PIN
-3. Save file
+Before deploying, change the demo PIN through the admin panel:
+1. Log in with **1234**
+2. Go to **⚙️ Налаштування** (Settings)
+3. Enter your new PIN in the "🔑 Локальний PIN" field (min. 4 characters)
+4. Click **Зберегти** (Save)
 
 ---
 

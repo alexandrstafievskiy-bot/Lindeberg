@@ -5,6 +5,8 @@
 
 window.Admin = (function() {
   const AUTH_KEY = 'adminAuth';
+  const LOCAL_PIN_KEY = 'adminLocalPin';
+  const DEFAULT_LOCAL_PIN = '1234';
   const DB_NAME = 'stroyklimat-admin';
   const STORE_NAME = 'catalog-versions';
   const PUBLISHED_STORE = 'published';
@@ -48,6 +50,15 @@ window.Admin = (function() {
   }
 
   // ===== INIT & AUTH =====
+
+  async function hashPin(pin) {
+    const encoded = new TextEncoder().encode(pin);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', encoded);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+  }
+
   async function init() {
     await initIndexedDB();
     await migrateLegacyData(); // Переносим старые данные из localStorage
@@ -165,19 +176,45 @@ window.Admin = (function() {
         cache: 'no-store',
         body: JSON.stringify({ password: pin })
       });
-      if (!response.ok) return false;
-      const payload = await response.json();
-      return !!payload.success;
+      if (response.ok) {
+        const payload = await response.json();
+        return !!payload.success;
+      }
+      // 401/400 = server is reachable but password is wrong
+      if (response.status === 401 || response.status === 400) {
+        return false;
+      }
+      // Server-side error (500 etc.) – fall through to local PIN
+      console.warn('Backend error (' + response.status + '), falling back to local PIN');
     } catch (err) {
-      console.error('PIN verification failed:', err);
-      return false;
+      // Network error – backend not running, fall through to local PIN
+      console.warn('Backend unavailable, using local PIN:', err.message);
+    }
+    // Local PIN fallback (for static-site deployments without a PHP server)
+    const storedHash = localStorage.getItem(LOCAL_PIN_KEY);
+    const inputHash = await hashPin(pin);
+    if (storedHash) {
+      return inputHash === storedHash;
+    }
+    // No custom PIN set – compare against hashed default
+    const defaultHash = await hashPin(DEFAULT_LOCAL_PIN);
+    return inputHash === defaultHash;
+  }
+
+  function showLoginError(message, type = 'error') {
+    const el = document.getElementById('loginError');
+    if (el) {
+      el.textContent = message;
+      el.className = 'alert ' + type;
+      el.style.display = 'block';
+      setTimeout(() => { el.style.display = 'none'; }, 4000);
     }
   }
 
   async function login() {
     const pin = (document.getElementById('adminPin').value || '').trim();
     if (!pin) {
-      showAlert('Введіть PIN', 'warning');
+      showLoginError('Введіть PIN', 'warning');
       return;
     }
     const isValid = await verifyPin(pin);
@@ -188,7 +225,7 @@ window.Admin = (function() {
       setupUI();
       loadCatalog().then(() => renderProducts());
     } else {
-      showAlert('Невірний PIN', 'error');
+      showLoginError('Невірний PIN', 'error');
     }
   }
 
@@ -1329,10 +1366,22 @@ window.Admin = (function() {
   }
 
   // ===== SETTINGS =====
-  function saveSettings() {
+  async function saveSettings() {
     const mode = document.querySelector('input[name="storeMode"]:checked').value;
     localStorage.setItem('storeMode', mode);
-    showAlert('Налаштування збережено', 'success');
+    const pinInput = document.getElementById('localPinInput');
+    const newPin = pinInput ? (pinInput.value || '').trim() : '';
+    if (newPin) {
+      if (newPin.length < 4) {
+        showAlert('PIN має бути не менше 4 символів', 'error');
+        return;
+      }
+      localStorage.setItem(LOCAL_PIN_KEY, await hashPin(newPin));
+      pinInput.value = '';
+      showAlert('Налаштування збережено (PIN змінено)', 'success');
+    } else {
+      showAlert('Налаштування збережено', 'success');
+    }
   }
 
   async function publishCatalog() {
