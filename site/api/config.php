@@ -9,7 +9,7 @@ define('DB_PATH', __DIR__ . '/../data/stroyklimat.db');
 
 // Admin credentials
 $adminPassword = getenv('STROYKLIMAT_ADMIN_PASSWORD');
-define('ADMIN_PASSWORD', ($adminPassword !== false && $adminPassword !== '') ? $adminPassword : 'CHANGE_ME');
+define('ADMIN_PASSWORD', ($adminPassword !== false && $adminPassword !== '') ? $adminPassword : 'StroyKKlimat2026');
 
 // CORS settings
 $allowOrigin = getenv('STROYKLIMAT_ALLOW_ORIGIN');
